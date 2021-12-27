@@ -11,6 +11,7 @@ module.exports = {
     "!src/types/**",
     "!lib/**",
     "!jest.config.js",
+    "!__tests__/**"
   ],
   coveragePathIgnorePatterns: ["/node_modules/"],
 

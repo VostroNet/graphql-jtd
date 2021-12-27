@@ -1,5 +1,5 @@
 import logger from "./utils/logger";
-import {GraphQLFieldConfigArgumentMap} from "graphql";
+import {GraphQLFieldConfig, GraphQLFieldConfigArgumentMap, GraphQLInputObjectType} from "graphql";
 import {
   GraphQLSchema,
   GraphQLObjectType,
@@ -10,6 +10,7 @@ import {
   GraphQLList,
 } from "graphql";
 import { IJtd, IJtdDict, IJtdRoot, JtdType } from '@vostro/jtd-types';
+import { GraphQLSchemaNormalizedConfig } from "graphql/type/schema";
 
 
 function createType(fieldType: GraphQLType) {
@@ -46,10 +47,12 @@ function createType(fieldType: GraphQLType) {
     }
   } else if (type instanceof GraphQLObjectType) {
     typeDef = { ref: type.name };
+  } else if (type instanceof GraphQLInputObjectType) {
+    typeDef = { ref: type.name };
   } else if (type instanceof GraphQLEnumType) {
     typeDef = { ref: type.name };
-  } else if (type instanceof GraphQLList) {
-    throw "TODO: List in list - needs implementing";
+  // } else if (type instanceof GraphQLList) {
+  //   throw "TODO: List in list - needs implementing";
   } else {
     logger.err(`unknown gql type ${typeName}`);
   }
@@ -73,7 +76,7 @@ function createType(fieldType: GraphQLType) {
 }
 
 export function createArguments(argMap: GraphQLFieldConfigArgumentMap | undefined) : IJtdDict | undefined {
-  if(argMap) {
+  if (argMap) {
     const keys = Object.keys(argMap);
     if(keys.length > 0) {
       return keys.reduce((o, k) => {
@@ -84,6 +87,41 @@ export function createArguments(argMap: GraphQLFieldConfigArgumentMap | undefine
   }
   return undefined;
 }
+function objectMapper(obj: GraphQLObjectType | GraphQLInputObjectType, schemaConfig: GraphQLSchemaNormalizedConfig) {
+  const objectConfig = obj.toConfig();
+  const metadata = {
+    name: objectConfig.name,
+  } as any;
+  if (obj === schemaConfig.query || obj === schemaConfig.mutation || obj === schemaConfig.subscription) {
+    metadata.rootElement = true;
+  }
+  return Object.keys(objectConfig.fields).reduce(
+    (o, k) => {
+      const field = objectConfig.fields[k];
+      const typeDef = createType(field.type);
+      if (obj instanceof GraphQLObjectType) {
+        typeDef.arguments = createArguments((field as GraphQLFieldConfig<any, any,any>).args);
+      }
+      if (!typeDef.nullable) {
+        if (!o.properties) {
+          o.properties = {};
+        }
+        o.properties[k] = typeDef;
+      } else {
+        if (!o.optionalProperties) {
+          o.optionalProperties = {};
+        }
+        o.optionalProperties[k] = typeDef;
+      }
+      return o;
+    },
+    {
+      metadata,
+      properties: {},
+      optionalProperties: {},
+    } as IJtd
+  );
+}
 
 export function createTypes(schema: GraphQLSchema) {
   const schemaConfig = schema.toConfig();
@@ -93,42 +131,13 @@ export function createTypes(schema: GraphQLSchema) {
   const objects = schemaConfig.types.filter(
     (f) => f instanceof GraphQLObjectType && f.name.indexOf("__") !== 0
   ) as GraphQLObjectType[];
+  const inputs = schemaConfig.types.filter(
+    (f) => f instanceof GraphQLInputObjectType && f.name.indexOf("__") !== 0
+  ) as GraphQLInputObjectType[]
+
   return [
-    ...objects.map((o) => {
-      const objectConfig = o.toConfig();
-      const metadata = {
-        name: objectConfig.name,
-      } as any;
-      if (o === schemaConfig.query || o === schemaConfig.mutation || o === schemaConfig.subscription) {
-        metadata.rootElement = true;
-      }
-      return Object.keys(objectConfig.fields).reduce(
-        (o, k) => {
-          const field = objectConfig.fields[k];
-          const typeDef = createType(field.type);
-          if (!typeDef.nullable) {
-            if (!o.properties) {
-              o.properties = {};
-            }
-            o.properties[k] = typeDef;
-          } else {
-            if (!o.optionalProperties) {
-              o.optionalProperties = {};
-            }
-            o.optionalProperties[k] = typeDef;
-          }
-          typeDef.arguments = createArguments(field.args);
-          
-         
-          return o;
-        },
-        {
-          metadata,
-          properties: {},
-          optionalProperties: {},
-        } as IJtd
-      );
-    }),
+    ...inputs.map((i) => objectMapper(i, schemaConfig)),
+    ...objects.map((o) => objectMapper(o, schemaConfig)),
     ...enums.map((enumType) => {
       return {
         metadata: {
@@ -169,20 +178,20 @@ export function generateJDTFromSchema(schema: GraphQLSchema) {
   const types = createTypes(schema);
   return generateJTDFromTypes(types);
 }
-export function isJTDScalarType(typeDef: IJtd) {
-  switch(typeDef.type) {
-    case JtdType.BOOLEAN:
-    case JtdType.FLOAT32:
-    case JtdType.FLOAT64:
-    case JtdType.INT16:
-    case JtdType.INT32:
-    case JtdType.INT8:
-    case JtdType.STRING:
-    case JtdType.TIMESTAMP:
-    case JtdType.UINT16:
-    case JtdType.UINT32:
-    case JtdType.UINT8:
-      return true;
-  }
-  return false;
-}
+// export function isJTDScalarType(typeDef: IJtd) {
+//   switch(typeDef.type) {
+//     case JtdType.BOOLEAN:
+//     case JtdType.FLOAT32:
+//     case JtdType.FLOAT64:
+//     case JtdType.INT16:
+//     case JtdType.INT32:
+//     case JtdType.INT8:
+//     case JtdType.STRING:
+//     case JtdType.TIMESTAMP:
+//     case JtdType.UINT16:
+//     case JtdType.UINT32:
+//     case JtdType.UINT8:
+//       return true;
+//   }
+//   return false;
+// }
