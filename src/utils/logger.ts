@@ -3,7 +3,7 @@ import debug from "debug";
 const log = debug("graphql-jtd:log");
 const warn = debug("graphql-jtd:warn");
 const err = debug("graphql-jtd:error");
-debug.enable("*")
+// debug.enable("*")
 
 export default {
   log,

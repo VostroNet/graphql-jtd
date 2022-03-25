@@ -1,24 +1,24 @@
-{  
+{
   "name": "@vostro/graphql-jtd",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "main": "lib/index.js",
   "scripts": {
     "build": "tsc --build",
-    "prepublishOnly": "tsc --build && tsc --declaration --declarationMap",
+    "prepublishOnly": "(rm -Rf ./lib || true) && tsc --build && tsc --declaration --declarationMap && (yalc remove --all || true)",
     "watch": "tsc --watch",
     "test": "jest"
   },
   "devDependencies": {
-    "@types/node": "^16.11.12",
     "@tsconfig/node16": "^1.0.1",
     "@tsconfig/recommended": "^1.0.1",
     "@types/debug": "^4.1.7",
     "@types/jest": "^27.0.3",
-    "@vostro/jtd-types": "^1.0.0",
+    "@types/node": "^16.11.12",
+    "@vostro/jtd-types": "^1.0.2",
+    "graphql": "^16.0.1",
     "jest": "^27.4.4",
     "ts-jest": "^27.1.1",
-    "typescript": "^4.5.3",
-    "graphql": "^16.0.1"
+    "typescript": "^4.5.3"
   },
   "peerDependencies": {
     "graphql": "^16.0.1"

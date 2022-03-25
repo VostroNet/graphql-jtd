@@ -9,10 +9,8 @@ import {
   GraphQLEnumType,
   GraphQLList,
 } from "graphql";
-import { IJtd, IJtdDict, IJtdRoot, JtdType } from '@vostro/jtd-types';
+import { IJtdMin, IJtdMinDict, IJtdMinRoot, JtdMinType } from "@vostro/jtd-types";
 import { GraphQLSchemaNormalizedConfig } from "graphql/type/schema";
-
-import {generateJDTMinFromSchema as gjmfs} from "./min"
 
 
 function createType(fieldType: GraphQLType) {
@@ -30,21 +28,21 @@ function createType(fieldType: GraphQLType) {
     type = type.ofType;
   }
   let typeName = type.toString();
-  let typeDef = {} as IJtd;
+  let typeDef = {} as IJtdMin;
   if (type instanceof GraphQLScalarType) {
     switch (typeName) {
       case "Int":
-        typeDef = { type: JtdType.INT32 };
+        typeDef = { t: JtdMinType.INT32 };
         break;
       case "ID":
       case "String":
-        typeDef = { type: JtdType.STRING };
+        typeDef = { t: JtdMinType.STRING };
         break;
       case "Float":
-        typeDef = { type: JtdType.FLOAT32 };
+        typeDef = { t: JtdMinType.FLOAT32 };
         break;
       default:
-        typeDef = { type: "unknown" };
+        typeDef = { t: "unknown" };
         logger.err(`no scalar type found for ${typeName}`);
         break;
     }
@@ -60,12 +58,10 @@ function createType(fieldType: GraphQLType) {
     logger.err(`unknown gql type ${typeName}`);
   }
   if (isList) {
-    typeDef = {elements: typeDef}
+    typeDef = {el: typeDef}
   }
-  if(required) {
-    typeDef.nullable = false;
-  } else {
-    typeDef.nullable = true;
+  if (required) {
+    typeDef.rq = true;
   }
   // if(obj?.args) {
   //     typeDef.arguments = Object.keys(obj.args).reduce((o, a) => {
@@ -73,19 +69,19 @@ function createType(fieldType: GraphQLType) {
   //       o[a] = createType(obj?.args[a]);
   //     }
   //     return o;
-  //   }, {} as IJtdDict);
+  //   }, {} as IJtdMinDict);
   // }
   return typeDef;
 }
 
-export function createArguments(argMap: GraphQLFieldConfigArgumentMap | undefined) : IJtdDict | undefined {
+export function createArguments(argMap: GraphQLFieldConfigArgumentMap | undefined) : IJtdMinDict | undefined {
   if (argMap) {
     const keys = Object.keys(argMap);
     if(keys.length > 0) {
       return keys.reduce((o, k) => {
         o[k] = createType(argMap[k].type);
         return o;
-      }, {} as IJtdDict);
+      }, {} as IJtdMinDict);
     }
   }
   return undefined;
@@ -93,36 +89,28 @@ export function createArguments(argMap: GraphQLFieldConfigArgumentMap | undefine
 function objectMapper(obj: GraphQLObjectType | GraphQLInputObjectType, schemaConfig: GraphQLSchemaNormalizedConfig) {
   const objectConfig = obj.toConfig();
   const metadata = {
-    name: objectConfig.name,
+    n: objectConfig.name,
   } as any;
   if (obj === schemaConfig.query || obj === schemaConfig.mutation || obj === schemaConfig.subscription) {
-    metadata.rootElement = true;
+    metadata.re = true;
   }
   return Object.keys(objectConfig.fields).reduce(
     (o, k) => {
       const field = objectConfig.fields[k];
       const typeDef = createType(field.type);
       if (obj instanceof GraphQLObjectType) {
-        typeDef.arguments = createArguments((field as GraphQLFieldConfig<any, any,any>).args);
+        typeDef.args = createArguments((field as GraphQLFieldConfig<any, any,any>).args);
       }
-      if (!typeDef.nullable) {
-        if (!o.properties) {
-          o.properties = {};
-        }
-        o.properties[k] = typeDef;
-      } else {
-        if (!o.optionalProperties) {
-          o.optionalProperties = {};
-        }
-        o.optionalProperties[k] = typeDef;
+      if (!o.p) {
+        o.p = {};
       }
+      o.p[k] = typeDef;
       return o;
     },
     {
-      metadata,
-      properties: {},
-      optionalProperties: {},
-    } as IJtd
+      md: metadata,
+      p: {},
+    } as IJtdMin
   );
 }
 
@@ -143,62 +131,61 @@ export function createTypes(schemaConfig: GraphQLSchemaNormalizedConfig) {
     ...enums.map((enumType) => {
       return {
         metadata: {
-          name: enumType.name,
+          n: enumType.name,
         },
         enum: enumType.getValues().map((v) => v.name),
-      } as IJtd;
+      } as IJtdMin;
     }),
   ];
 }
 
 
-export function generateJTDFromTypes(types: IJtd[], metadata = {}) {
+export function generateJTDMinFromTypes(types: IJtdMin[], metadata = {}) {
   const definitions = types
-    .filter((t) => !t.metadata?.rootElement)
+    .filter((t) => !t.md?.re) // filter rootElement
     .reduce((o, t) => {
-      if(t.metadata) {
-        o[t.metadata?.name] = t;
+      if(t.md) {
+        o[t.md?.n] = t;
       }
       return o;
-    }, {} as IJtdDict)
+    }, {} as IJtdMinDict)
   const optionalProperties = types
-    .filter((t) => t.metadata?.rootElement)
+    .filter((t) => t.md?.re)
     .reduce((o, t) => {
-      if(t.metadata) {
-        o[t.metadata?.name] = t;
+      if(t.md) {
+        o[t.md?.n] = t;
       }
       return o;
-    }, {} as IJtdDict)
+    }, {} as IJtdMinDict)
   return {
-    metadata,
-    definitions,
-    optionalProperties
-  } as IJtdRoot
+    md: metadata,
+    def: definitions,
+    p: optionalProperties,
+  } as IJtdMinRoot
 }
 
-export function generateJDTFromSchema(schema: GraphQLSchema) {
+export function generateJDTMinFromSchema(schema: GraphQLSchema) {
   const schemaConfig = schema.toConfig();
   const types = createTypes(schemaConfig);
-  return generateJTDFromTypes(types, {
+  return generateJTDMinFromTypes(types, {
     mutation: schemaConfig.mutation?.name,
     query: schemaConfig.query?.name,
   });
 }
-// export function isJTDScalarType(typeDef: IJtd) {
+// export function isJTDScalarType(typeDef: IJtdMin) {
 //   switch(typeDef.type) {
-//     case JtdType.BOOLEAN:
-//     case JtdType.FLOAT32:
-//     case JtdType.FLOAT64:
-//     case JtdType.INT16:
-//     case JtdType.INT32:
-//     case JtdType.INT8:
-//     case JtdType.STRING:
-//     case JtdType.TIMESTAMP:
-//     case JtdType.UINT16:
-//     case JtdType.UINT32:
-//     case JtdType.UINT8:
+//     case JtdMinType.BOOLEAN:
+//     case JtdMinType.FLOAT32:
+//     case JtdMinType.FLOAT64:
+//     case JtdMinType.INT16:
+//     case JtdMinType.INT32:
+//     case JtdMinType.INT8:
+//     case JtdMinType.STRING:
+//     case JtdMinType.TIMESTAMP:
+//     case JtdMinType.UINT16:
+//     case JtdMinType.UINT32:
+//     case JtdMinType.UINT8:
 //       return true;
 //   }
 //   return false;
 // }
-export const generateJDTMinFromSchema = gjmfs;
