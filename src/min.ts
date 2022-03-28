@@ -130,7 +130,7 @@ export function createTypes(schemaConfig: GraphQLSchemaNormalizedConfig) {
     ...objects.map((o) => objectMapper(o, schemaConfig)),
     ...enums.map((enumType) => {
       return {
-        metadata: {
+        md: {
           n: enumType.name,
         },
         enum: enumType.getValues().map((v) => v.name),
