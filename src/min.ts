@@ -42,7 +42,7 @@ function createType(fieldType: GraphQLType) {
         typeDef = { t: JtdMinType.FLOAT32 };
         break;
       default:
-        typeDef = { t: "unknown" };
+        typeDef = { t: JtdMinType.UNKNOWN };
         logger.err(`no scalar type found for ${typeName}`);
         break;
     }
