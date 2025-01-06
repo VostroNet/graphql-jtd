@@ -1,6 +1,7 @@
 import {generateJDTMinFromSchema} from "../src/index";
 import demoSchema from "./utils/demo-schema";
-import { buildSchema } from 'graphql';
+import customSchema from "./utils/custom-schema";
+import { JtdMinType } from "@vostro/jtd-types";
 
 
 test("jtd schema - root elements test", () => {
@@ -24,4 +25,25 @@ test("jtd schema - basic types - input and result", async() => {
   expect(rootSchema).toBeDefined();
   expect(rootSchema.def?.test1Result).toBeDefined();
   expect(rootSchema.def?.test1input1).toBeDefined();
+});
+
+
+test("jtd schema - custom types - no resolver", async() => {
+  const rootSchema = generateJDTMinFromSchema(customSchema);
+  expect(rootSchema).toBeDefined();
+  expect(rootSchema.p?.Query?.p?.hello?.t).toBe(JtdMinType.STRING);
+  expect(rootSchema.p?.Query?.p?.date?.t).toBe(JtdMinType.UNKNOWN);
+});
+
+
+test("jtd schema - custom types - with custom resolver", async() => {
+  const rootSchema = generateJDTMinFromSchema(customSchema, (type) => {
+    if (type.toString() === "GQLTDate") {
+      return JtdMinType.TIMESTAMP;
+    }
+    return undefined
+  });
+  expect(rootSchema).toBeDefined();
+  expect(rootSchema.p?.Query?.p?.hello?.t).toBe(JtdMinType.STRING);
+  expect(rootSchema.p?.Query?.p?.date?.t).toBe(JtdMinType.TIMESTAMP);
 });

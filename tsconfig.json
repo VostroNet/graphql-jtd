@@ -1,5 +1,5 @@
 {
-  "extends": "@tsconfig/node16/tsconfig.json",
+  "extends": "@tsconfig/node22/tsconfig.json",
   "compilerOptions": {
     "moduleResolution": "node",
     "module": "CommonJS",
@@ -8,6 +8,7 @@
     "preserveConstEnums": true,
     "outDir": "lib/",
     "sourceMap": true,
+    "lib": ["es2022"]
     
   },
   "include": ["src/**/*"],

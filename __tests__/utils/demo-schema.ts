@@ -27,5 +27,7 @@ type Query {
 type Mutation {
   mutationTest1(arg1: String!, arg2: [test1input1]): test1Result
 }
-`);
+`, {
+  
+});
 

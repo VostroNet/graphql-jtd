@@ -1,6 +1,7 @@
+import { JtdType } from "@vostro/jtd-types";
 import {generateJDTFromSchema} from "../src/index";
+import customSchema from "./utils/custom-schema";
 import demoSchema from "./utils/demo-schema";
-import { buildSchema } from 'graphql';
 
 
 test("jtd schema - root elements test", () => {
@@ -24,4 +25,26 @@ test("jtd schema - basic types - input and result", async() => {
   expect(rootSchema).toBeDefined();
   expect(rootSchema.definitions?.test1Result).toBeDefined();
   expect(rootSchema.definitions?.test1input1).toBeDefined();
+});
+
+
+
+test("jtd schema - custom types - no resolver", async() => {
+  const rootSchema = generateJDTFromSchema(customSchema);
+  expect(rootSchema).toBeDefined();
+  expect(rootSchema.optionalProperties?.Query?.optionalProperties?.hello?.type).toBe(JtdType.STRING);
+  expect(rootSchema.optionalProperties?.Query?.optionalProperties?.date?.type).toBe(JtdType.UNKNOWN);
+});
+
+
+test("jtd schema - custom types - with custom resolver", async() => {
+  const rootSchema = generateJDTFromSchema(customSchema, (type) => {
+    if (type.toString() === "GQLTDate") {
+      return JtdType.TIMESTAMP;
+    }
+    return undefined
+  });
+  expect(rootSchema).toBeDefined();
+  expect(rootSchema.optionalProperties?.Query?.optionalProperties?.hello?.type).toBe(JtdType.STRING);
+  expect(rootSchema.optionalProperties?.Query?.optionalProperties?.date?.type).toBe(JtdType.TIMESTAMP);
 });
